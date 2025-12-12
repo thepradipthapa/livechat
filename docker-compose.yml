@@ -1,0 +1,96 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: "livechat_app:latest"
+    container_name: "livechat_app"
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - ./backend:/backend
+      - /backend/.venv
+    depends_on:
+      - redis
+      - rabbitmq
+    command: > 
+      bash -c "
+      uv run manage.py makemigrations &&
+      uv run manage.py migrate &&
+      uv run manage.py runserver 0.0.0.0:8000"
+    restart: always
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: "livechat_celery:latest"
+    container_name: "livechat_celery"
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/backend
+      - /backend/.venv
+    depends_on:
+      - redis
+      - rabbitmq
+    command: >
+      bash -c "
+      uv run celery -A livechat worker --loglevel=info"
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: "livechat_beat:latest"
+    container_name: "livechat_beat"
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/backend
+      - /backend/.venv
+    depends_on:
+      - redis
+      - rabbitmq
+    command: >
+      bash -c "
+      uv run celery -A livechat beat --loglevel=info"
+    restart: unless-stopped
+
+  redis:
+    image: "redis:7"
+    container_name: "livechat_redis"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - redis_data:/data
+    restart: always
+
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    container_name: "livechat_rabbitmq"
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"   # broker port (Celery connects here)
+      - "15672:15672" # management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: always
+
+volumes:
+  redis_data:
+  rabbitmq_data:
