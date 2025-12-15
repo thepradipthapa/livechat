@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 from decouple import config
 
@@ -41,6 +42,7 @@ INSTALLED_APPS = [
     
     #  Thirt party
     'rest_framework',
+    'rest_framework_simplejwt',
     
     # Apps
     'accounts',
@@ -126,9 +128,27 @@ STATIC_URL = 'static/'
 # Custom User Model
 AUTH_USER_MODEL = "accounts.User"
 
+# JWT Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+}
 
-# Redis
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = config('EMAIL_HOST')
+EMAIL_PORT = config('EMAIL_PORT', cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+
+# Redis Configuration
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -139,6 +159,6 @@ CACHES = {
     }
 }
 
-# Celery 
+# Celery configuration
 CELERY_BROKER_URL = config('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
