@@ -9,7 +9,7 @@ class UserVerifySerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6)
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
+class UserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["name", "email", "created_at"]
+        fields = ["id", "name", "email", "created_at"]
