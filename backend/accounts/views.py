@@ -5,6 +5,7 @@ from .serializers import UserLoginSerializer, UserVerifySerializer, UserProfileS
 from .utils import generate_otp, store_otp, verify_otp, clear_otp, name_from_email, get_tokens_for_user
 from .tasks import send_otp_email_task
 from .models import User
+from .services.rate_limit_service import can_send_otp, can_verify_otp
 
 class UserLoginView(APIView):
     """ View to handle user login via email base-OTP. """
@@ -16,7 +17,14 @@ class UserLoginView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         
-        # Generate + store OTp in Redis
+        # Rate limit check
+        if not can_send_otp(data["email"]):
+            return Response(
+                {"message": "Too many OTP requests, Please try again later"}, 
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
+        # Generate + store OTP in Redis
         code = generate_otp()
         store_otp(data["email"], code)
         
@@ -47,6 +55,10 @@ class UserVerifyView(APIView):
                 {"error": "email and code are required"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+        # Rate limit check
+        if not can_verify_otp(data["email"], data["otp"]):
+            return Response({"error": "Too many verification attempts, Please try again later"}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         
         # Verify OTP
         if not verify_otp(data["email"], data["otp"]):
