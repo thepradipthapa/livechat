@@ -3,8 +3,16 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Conversation, ConversationParticipant
-from .serializers import ConversationSerializer, ChatListSerializer, LatestMessageSerializer,ChatUserSerializer
+from .models import Conversation, ConversationParticipant, Message
+from .serializers import (
+    ConversationSerializer, 
+    ChatListSerializer, 
+    LatestMessageSerializer,
+    ChatUserSerializer, 
+    SendMessageSerializer, 
+    MessageSerializer
+)
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -108,3 +116,52 @@ class GetAllChatsView(APIView):
         serializer = ChatListSerializer(chat_list, many=True)
         return Response(serializer.data)
 
+class SendMessageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = SendMessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        conversation_id = serializer.validated_data["conversation_id"]
+        content = serializer.validated_data["content"]
+        sender = request.user
+
+        # 1️⃣ Get conversation
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+
+        # 2️⃣ Check sender is participant
+        if not ConversationParticipant.objects.filter(
+            conversation=conversation,
+            user=sender
+        ).exists():
+            return Response(
+                {"error": "You are not a participant of this conversation"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 3️⃣ Find receiver (other participant)
+        receiver = (
+            ConversationParticipant.objects
+            .filter(conversation=conversation)
+            .exclude(user=sender)
+            .first()
+            .user
+        )
+
+        # 4️⃣ Create message
+        message = Message.objects.create(
+            conversation=conversation,
+            sender=sender,
+            receiver=receiver,
+            content=content,
+            is_read=False,
+        )
+
+        # 5️⃣ Serialize response
+        response_serializer = MessageSerializer(message)
+
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED
+        )

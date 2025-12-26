@@ -32,3 +32,16 @@ class ChatListSerializer(serializers.Serializer):
     conversation_id = serializers.UUIDField()
     user = ChatUserSerializer()
     conversation = ConversationMetaSerializer()
+    
+    
+class SendMessageSerializer(serializers.Serializer):
+    conversation_id = serializers.UUIDField()
+    content = serializers.CharField(max_length=2000)
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = ChatUserSerializer()
+
+    class Meta:
+        model = Message
+        fields = ["id", "content", "sender", "timestamp"]
