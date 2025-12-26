@@ -46,24 +46,24 @@ services:
       uv run celery -A livechat worker --loglevel=info"
     restart: unless-stopped
 
-  celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: "livechat_beat:latest"
-    container_name: "livechat_beat"
-    env_file:
-      - .env
-    volumes:
-      - ./backend:/backend
-      - /backend/.venv
-    depends_on:
-      - redis
-      - rabbitmq
-    command: >
-      bash -c "
-      uv run celery -A livechat beat --loglevel=info"
-    restart: unless-stopped
+  # celery-beat:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   image: "livechat_beat:latest"
+  #   container_name: "livechat_beat"
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./backend:/backend
+  #     - /backend/.venv
+  #   depends_on:
+  #     - redis
+  #     - rabbitmq
+  #   command: >
+  #     bash -c "
+  #     uv run celery -A livechat beat --loglevel=info"
+  #   restart: unless-stopped
 
   redis:
     image: "redis:7"
