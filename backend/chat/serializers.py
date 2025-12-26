@@ -45,3 +45,21 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ["id", "content", "sender", "timestamp"]
+        
+class MessageListSerializer(serializers.ModelSerializer):
+    sender = ChatUserSerializer()
+
+    class Meta:
+        model = Message
+        fields = [
+            "id",
+            "content",
+            "sender",
+            "is_read",
+            "timestamp"
+        ]
+
+
+class ConversationMessagesSerializer(serializers.Serializer):
+    conversation_id = serializers.UUIDField()
+    messages = MessageListSerializer(many=True)

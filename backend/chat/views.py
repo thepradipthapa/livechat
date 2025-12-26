@@ -10,7 +10,8 @@ from .serializers import (
     LatestMessageSerializer,
     ChatUserSerializer, 
     SendMessageSerializer, 
-    MessageSerializer
+    MessageSerializer,
+    ConversationMessagesSerializer,
 )
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
@@ -127,10 +128,10 @@ class SendMessageView(APIView):
         content = serializer.validated_data["content"]
         sender = request.user
 
-        # 1️⃣ Get conversation
+        # Get conversation
         conversation = get_object_or_404(Conversation, id=conversation_id)
 
-        # 2️⃣ Check sender is participant
+        # Check sender is participant
         if not ConversationParticipant.objects.filter(
             conversation=conversation,
             user=sender
@@ -140,7 +141,7 @@ class SendMessageView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # 3️⃣ Find receiver (other participant)
+        # Find receiver (other participant)
         receiver = (
             ConversationParticipant.objects
             .filter(conversation=conversation)
@@ -149,7 +150,7 @@ class SendMessageView(APIView):
             .user
         )
 
-        # 4️⃣ Create message
+        # Create message
         message = Message.objects.create(
             conversation=conversation,
             sender=sender,
@@ -158,10 +159,61 @@ class SendMessageView(APIView):
             is_read=False,
         )
 
-        # 5️⃣ Serialize response
+        # Serialize response
         response_serializer = MessageSerializer(message)
 
         return Response(
             response_serializer.data,
             status=status.HTTP_201_CREATED
         )
+
+
+class GetMessagesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        conversation_id = request.query_params.get("conversation_id")
+
+        if not conversation_id:
+            return Response(
+                {"error": "conversation_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
+
+        # Get conversation
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+
+        # Check participation
+        if not ConversationParticipant.objects.filter(
+            conversation=conversation,
+            user=user
+        ).exists():
+            return Response(
+                {"error": "You are not a participant of this conversation"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Fetch messages
+        messages = (
+            Message.objects
+            .filter(conversation=conversation)
+            .select_related("sender")
+            .order_by("timestamp")
+        )
+        
+        # Mark unread messages as read
+        Message.objects.filter(
+            conversation=conversation,
+            receiver=user,
+            is_read=False
+        ).update(is_read=True)
+
+        # Serialize
+        serializer = ConversationMessagesSerializer({
+            "conversation_id": conversation.id,
+            "messages": messages
+        })
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
