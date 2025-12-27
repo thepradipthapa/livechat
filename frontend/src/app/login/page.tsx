@@ -2,7 +2,7 @@
 
 import React, {useState} from 'react'
 import {useRouter} from 'next/navigation'
-import { ArrowRight, Mail } from 'lucide-react';
+import { ArrowRight, Loader2, Mail } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -18,11 +18,17 @@ const LoginPage = () => {
         setLoading(true)
 
         try {
-            const {data}=  await axios.post(`https://localhost:8000/`, {email});
+            const { data } = await axios.post(`http://localhost:8000/api/v1/login/`, {email});
             alert(data.message)
             router.push(`/verify?email=${email}`)
         } catch (error: any) {
-            alert(error.response.data.message)
+            if (axios.isAxiosError(error)) {
+                alert(error.response?.data?.message || 'Server error occurred');
+            } else {
+                alert('An unexpected error occurred');
+            }
+
+            // alert(error.response.data.message)
         }finally{
             setLoading(false)
         }
@@ -56,11 +62,25 @@ const LoginPage = () => {
                                 onChange={e=>setEmail(e.target.value)}
                                 />
                         </div>
-                        <button type="submit" className="w-full bg-green-600 text-white py-6 px-6 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <div className="flex items-center justify-center gap-2">
-                                <span>Send Varification code</span>
-                                <ArrowRight className="w-5 h-5" />
-                            </div>
+                        <button 
+                            type="submit" 
+                            className="w-full bg-green-600 text-white py-6 px-6 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={loding}
+                            >
+                            {
+                                loding ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Loader2 className="w-5 h-5" />
+                                        <span>Sending OTP to your Email</span>
+                                    </div>
+                                ): (
+                                <div className="flex items-center justify-center gap-2">
+                                    <span>Send Varification code</span>
+                                    <ArrowRight className="w-5 h-5" />
+                                </div>
+                                )
+                            }
+                            
                         </button>
                     </form>
             </div>
