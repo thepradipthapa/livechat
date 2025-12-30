@@ -58,7 +58,7 @@ class UserVerifyView(APIView):
             
         # Rate limit check
         if not can_verify_otp(data["email"], data["otp"]):
-            return Response({"error": "Too many verification attempts, Please try again later"}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+            return Response({"error": "Too many verification attempts"}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         
         # Verify OTP
         if not verify_otp(data["email"], data["otp"]):
